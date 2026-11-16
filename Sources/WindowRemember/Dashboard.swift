@@ -146,6 +146,10 @@ struct Dashboard: View {
             VStack(alignment: .leading, spacing: 20) {
                 Toggle("Restore when displays change or the Mac wakes", isOn: $store.automatic)
                 Toggle("Pause automatic learning", isOn: $store.paused)
+                if store.learningProtected {
+                    Text("The last restore had failures. Your saved layout is protected from being overwritten.").font(.caption).foregroundStyle(.orange)
+                    Button("Resume learning from current windows") { store.learningProtected = false; store.learn(force: true) }
+                }
                 Divider()
                 Text("Restore shortcut: ⇧⌘R while WindowRemember is active.").font(.caption).foregroundStyle(.secondary)
                 Text("Pinned setups keep their saved arrangement. Unpin a setup to resume learning.").font(.caption).foregroundStyle(.secondary)
@@ -159,7 +163,15 @@ struct Dashboard: View {
                     }
                 }
             }.card()
-            Text("WindowRemember works with accessible standard windows on the current desktop. Closed apps, minimized windows, full-screen windows and other Spaces are not restored. Scenes require their apps to be open.").font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Local diagnostics").font(.headline)
+                Text("Detailed capture and restore logs include window titles, app IDs, monitor identities, frames, matching decisions and macOS errors. Stored only on this Mac; two rotating files, about 10 MB total.").font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button("Capture diagnostic snapshot") { store.captureDiagnostics() }
+                    Button("Open logs folder") { NSWorkspace.shared.open(Diagnostics.directory) }
+                }
+            }.card()
+            Text("WindowRemember works with accessible standard windows on the current desktop. Closed apps and minimized windows are not restored. Full-screen sessions temporarily leave full-screen to move and then re-enter it; macOS may switch Spaces during this process. Scenes require their apps to be open.").font(.caption).foregroundStyle(.secondary)
         }
     }
     func empty(_ icon: String, _ title: String, _ detail: String) -> some View {

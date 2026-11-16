@@ -11,6 +11,7 @@ struct WindowRecord: Codable, Identifiable {
     var y: Double
     var width: Double
     var height: Double
+    var fullscreen: Bool? = nil
 }
 struct Layout: Codable, Identifiable {
     var id = UUID()
