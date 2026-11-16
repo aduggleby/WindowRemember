@@ -10,7 +10,7 @@ No scenes, presets, accounts, subscriptions, dashboard, or separate main window.
 
 **[Download the latest release](https://github.com/aduggleby/WindowRemember/releases/latest)**
 
-Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. See the release notes for the build’s signing and notarization status.
+Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.0 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
 
 1. Download and unzip `WindowRemember-1.1.0-universal.zip`.
 2. Move **WindowRemember.app** to **Applications** before opening it.

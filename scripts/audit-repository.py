@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline heuristic audit of every reachable Git blob and commit metadata.
+"""Offline heuristic audit of every published-branch/tag Git blob and commit metadata.
 
 Prints locations and rule names, never matched secret values. This complements
 manual review; no automated scanner can guarantee the absence of all secrets.
@@ -19,7 +19,7 @@ rules = {
     "private-network-address": rb"\b(?:192\.168\.[0-9]{1,3}\.[0-9]{1,3}|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\b",
 }
 patterns = {name: re.compile(pattern) for name, pattern in rules.items()}
-objects = subprocess.check_output(["git", "rev-list", "--objects", "--all"]).splitlines()
+objects = subprocess.check_output(["git", "rev-list", "--objects", "--branches", "--tags", "--remotes"]).splitlines()
 locations = {}
 for line in objects:
     parts = line.split(b" ", 1)
