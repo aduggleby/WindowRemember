@@ -3,9 +3,18 @@ import AppKit
 
 @main struct WindowRememberApp: App {
     @StateObject private var store = Store()
+    init() {
+        if let flag = CommandLine.arguments.firstIndex(of: "--render-screenshots"), CommandLine.arguments.indices.contains(flag + 1) {
+            do { try ScreenshotExporter.export(to: URL(fileURLWithPath: CommandLine.arguments[flag + 1])) }
+            catch { fputs("Screenshot export failed: \(error.localizedDescription)\n", stderr); exit(1) }
+            exit(0)
+        }
+    }
     var body: some Scene {
-        MenuBarExtra("WindowRemember", systemImage: "anchor") {
+        MenuBarExtra {
             MenuPanel().environmentObject(store)
+        } label: {
+            Image(nsImage: TrayIcon.image).accessibilityLabel("WindowRemember")
         }.menuBarExtraStyle(.window)
     }
 }
@@ -15,6 +24,9 @@ struct MenuPanel: View {
     @State private var troubleshooting = false
     @State private var notice: String?
 
+    init(expandedDiagnostics: Bool = false) {
+        _troubleshooting = State(initialValue: expandedDiagnostics)
+    }
     private var heading: String {
         if !store.trusted { return "Allow window access" }
         if store.isRestoring { return "Putting your windows back…" }
@@ -31,7 +43,7 @@ struct MenuPanel: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Label("WindowRemember", systemImage: "anchor").font(.headline).padding(.bottom, 22)
+            Label { Text("WindowRemember") } icon: { Image(nsImage: TrayIcon.image) }.font(.headline).padding(.bottom, 22)
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: !store.trusted ? "lock" : store.learningProtected ? "exclamationmark.circle" : store.isRestoring ? "arrow.triangle.2.circlepath" : store.paused ? "pause.circle" : "checkmark.circle")
                     .foregroundStyle(!store.trusted || store.learningProtected ? Color.orange : Color.accentColor).padding(.top, 3)

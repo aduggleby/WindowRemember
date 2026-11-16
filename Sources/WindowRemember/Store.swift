@@ -21,9 +21,14 @@ import ServiceManagement
     private var restoreTask: Task<Void, Never>?
     private var topology = DisplayInfo.current.map { $0.id + NSStringFromRect($0.frame) }.joined()
     private let file: URL
-    init() {
+    init(preview: Bool = false) {
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("WindowRemember")
         file = directory.appendingPathComponent("layouts.json")
+        if preview {
+            trusted = true
+            displays = [DisplayInfo(id: "sample-laptop", name: "MacBook", frame: CGRect(x: 0, y: 0, width: 1440, height: 900), visible: CGRect(x: 0, y: 25, width: 1440, height: 875)), DisplayInfo(id: "sample-external", name: "External display", frame: CGRect(x: 1440, y: 0, width: 2560, height: 1440), visible: CGRect(x: 1440, y: 25, width: 2560, height: 1415))]
+            return
+        }
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             if FileManager.default.fileExists(atPath: file.path) { archive = try JSONDecoder().decode(Archive.self, from: Data(contentsOf: file)) }

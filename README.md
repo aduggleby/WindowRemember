@@ -6,13 +6,29 @@ Arrange your windows and keep working. WindowRemember learns their positions and
 
 No scenes, presets, accounts, subscriptions, dashboard, or separate main window.
 
+## Screenshots
+
+The app’s actual interface, rendered with sample monitor data. No desktop contents or private window titles are included.
+
+<p>
+  <img src="docs/screenshots/remembering.png" alt="WindowRemember menu bar popover remembering windows automatically" width="330">
+  <img src="docs/screenshots/troubleshooting.png" alt="WindowRemember with local troubleshooting tools expanded" width="330">
+</p>
+
+<details>
+<summary>Accessibility setup</summary>
+
+<img src="docs/screenshots/access-needed.png" alt="WindowRemember asking for Accessibility access" width="330">
+
+</details>
+
 ## Download and install
 
 **[Download the latest release](https://github.com/aduggleby/WindowRemember/releases/latest)**
 
-Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.0 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
+Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.1 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
 
-1. Download and unzip `WindowRemember-1.1.0-universal.zip`.
+1. Download and unzip `WindowRemember-1.1.1-universal.zip`.
 2. Move **WindowRemember.app** to **Applications** before opening it.
 3. Open it and click the **anchor icon** in the menu bar.
 4. Click **Open Accessibility Settings**, then enable WindowRemember under **Privacy & Security → Accessibility**. This is the macOS permission needed to read and move other apps’ windows.
@@ -81,3 +97,12 @@ Tests cover window eligibility, remote-session matching, and migration from earl
 ## License
 
 [MIT](LICENSE). Independently implemented using SwiftUI, AppKit, and the public Accessibility APIs. Inspired by the window-memory workflow of [Putback](https://putback.app/); not affiliated with it.
+
+### Refresh documentation screenshots
+
+The app can render its real menu interface with synthetic data, without capturing the desktop or reading saved layouts:
+
+```sh
+swift build -c release
+.build/release/WindowRemember --render-screenshots "$PWD/docs/screenshots"
+```
