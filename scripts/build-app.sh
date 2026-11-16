@@ -3,7 +3,13 @@ set -eu
 cd "$(dirname "$0")/.."
 export CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$PWD/.build/module-cache"
-swift build --disable-sandbox -c release
+VERSION="1.1.0"
+BUILD_ARGS=(--disable-sandbox -c release)
+if [[ "${WR_UNIVERSAL:-0}" == "1" ]]; then
+    BUILD_ARGS+=(--arch arm64 --arch x86_64)
+fi
+swift build "${BUILD_ARGS[@]}"
+BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 APP="$PWD/dist/WindowRemember.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 ICONSET="$PWD/.build/AppIcon.iconset"
@@ -14,8 +20,9 @@ for SIZE in 16 32 128 256 512; do
     sips -z "$RETINA" "$RETINA" Assets/AppIcon.png --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
-cp .build/release/WindowRemember "$APP/Contents/MacOS/WindowRemember"
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cp "$BIN_DIR/WindowRemember" "$APP/Contents/MacOS/WindowRemember"
+strip -S "$APP/Contents/MacOS/WindowRemember"
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -24,11 +31,17 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleName</key><string>WindowRemember</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>1.0.0</string>
-<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleShortVersionString</key><string>$VERSION</string>
+<key>CFBundleVersion</key><string>2</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
+<key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST
-codesign --force --sign - "$APP"
-printf 'Built %s\n' "$APP"
+if [[ -n "${WR_SIGN_IDENTITY:-}" ]]; then
+    codesign --force --options runtime --timestamp --sign "$WR_SIGN_IDENTITY" "$APP"
+else
+    codesign --force --sign - "$APP"
+fi
+codesign --verify --deep --strict "$APP"
+printf 'Built %s (%s)\n' "$APP" "$VERSION"

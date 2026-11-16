@@ -30,3 +30,18 @@ final class WindowPolicyTests: XCTestCase {
         XCTAssertNil(restored.fullscreen)
     }
 }
+
+final class ArchiveMigrationTests: XCTestCase {
+    func testLegacyScenesAndHistoryAreDiscardedWithoutLosingLayouts() throws {
+        let window = WindowRecord(bundleID: "example.editor", appName: "Editor", title: "Example", ordinal: 0, displayID: "display", x: 10, y: 20, width: 900, height: 600)
+        let layout = Layout(name: "Example display", configuration: "display", windows: [window])
+        var encoded = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(Archive(layouts: ["display": layout]))) as? [String: Any])
+        encoded["scenes"] = [["name": "Old scene"]]
+        encoded["history"] = [["reason": "Old restore"]]
+        encoded["ignoredApps"] = ["example.editor"]
+        let migrated = try JSONDecoder().decode(Archive.self, from: JSONSerialization.data(withJSONObject: encoded))
+        XCTAssertEqual(migrated.layouts["display"]?.windows.first?.title, "Example")
+        let output = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(migrated)) as? [String: Any])
+        XCTAssertEqual(Set(output.keys), ["layouts"])
+    }
+}

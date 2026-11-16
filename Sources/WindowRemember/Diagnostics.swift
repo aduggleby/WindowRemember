@@ -8,7 +8,7 @@ enum Diagnostics {
     static func log(_ event: String, _ fields: [String: Any] = [:]) {
         lock.lock(); defer { lock.unlock() }
         do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             if let size = try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > 5_000_000 {
                 let previous = directory.appendingPathComponent("debug.previous.jsonl")
                 if FileManager.default.fileExists(atPath: previous.path) { try FileManager.default.removeItem(at: previous) }

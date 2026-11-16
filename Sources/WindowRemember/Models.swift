@@ -19,20 +19,10 @@ struct Layout: Codable, Identifiable {
     var configuration: String
     var windows: [WindowRecord]
     var updated = Date()
-    var pinned = false
 }
-struct RestoreEvent: Codable, Identifiable {
-    var id = UUID()
-    var date = Date()
-    var reason: String
-    var moved: Int
-    var skipped: Int
-}
+// Unknown legacy keys (scenes, pins, history, exclusions) are deliberately ignored.
 struct Archive: Codable {
     var layouts: [String: Layout] = [:]
-    var scenes: [Layout] = []
-    var history: [RestoreEvent] = []
-    var ignoredApps: [String] = []
 }
 struct DisplayInfo: Identifiable {
     var id: String

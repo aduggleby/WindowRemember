@@ -3,3 +3,10 @@ dist/
 .DS_Store
 Diagnostics/
 *.jsonl
+.env
+.env.*
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+*.keychain-db
