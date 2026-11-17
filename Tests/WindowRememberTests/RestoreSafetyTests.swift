@@ -2,6 +2,30 @@ import XCTest
 @testable import WindowRemember
 
 final class RestoreSafetyTests: XCTestCase {
+    @MainActor func testFailurePausesSavingPersistsProtectionAndSignalsUser() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("layouts.json")
+        let store = Store(preview: true, storageURL: file)
+        let config = DisplayInfo.signature
+        let target = Layout(name: "Test setup", configuration: config, windows: [record()])
+        store.archive.layouts[config] = target
+        var signaled = false
+        let observer = NotificationCenter.default.addObserver(forName: .windowRememberRestoreFailed, object: store, queue: nil) { _ in signaled = true }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        store.failRestore("A window could not be restored.", configuration: config)
+        XCTAssertTrue(store.savingPausedByFailure)
+        XCTAssertTrue(signaled)
+        let saved = try Data(contentsOf: file)
+        store.paused = false
+        store.tick()
+        XCTAssertEqual(try Data(contentsOf: file), saved)
+        let reopened = try JSONDecoder().decode(Archive.self, from: saved)
+        XCTAssertTrue(reopened.protectedConfigurations?.contains(config) == true)
+        XCTAssertEqual(reopened.layouts[config]?.windows, target.windows)
+    }
+
     private func record(_ bundle: String = "example.editor") -> WindowRecord {
         WindowRecord(bundleID: bundle, appName: "Editor", title: "Document", ordinal: 0, displayID: "external", x: 100, y: 100, width: 900, height: 600)
     }

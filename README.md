@@ -12,6 +12,7 @@ The app’s actual interface, rendered with sample monitor data. No desktop cont
 
 <p>
   <img src="docs/screenshots/remembering.png" alt="WindowRemember menu bar popover remembering windows automatically" width="330">
+  <img src="docs/screenshots/restore-failed.png" alt="Restore failed error with layout saving paused and retry action" width="330">
   <img src="docs/screenshots/troubleshooting.png" alt="WindowRemember with local troubleshooting tools expanded" width="330">
 </p>
 
@@ -26,9 +27,9 @@ The app’s actual interface, rendered with sample monitor data. No desktop cont
 
 **[Download the latest release](https://github.com/aduggleby/WindowRemember/releases/latest)**
 
-Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.3 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
+Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.4 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
 
-1. Download and unzip `WindowRemember-1.1.3-universal.zip`.
+1. Download and unzip `WindowRemember-1.1.4-universal.zip`.
 2. Move **WindowRemember.app** to **Applications** before opening it.
 3. Open it and click the **anchor icon** in the menu bar.
 4. Click **Open Accessibility Settings**, then enable WindowRemember under **Privacy & Security → Accessibility**. This is the macOS permission needed to read and move other apps’ windows.
@@ -42,7 +43,7 @@ Leave the app running. Positions are sampled about every three seconds. When you
 
 The popover normally shows only its status, connected monitors, **Pause remembering**, collapsed **Troubleshooting**, and **Quit**. There is no save button and no layout selection.
 
-Wake and reconnect captures are retried with fresh Accessibility references when the system exposes invalid or incomplete window data. Saved layouts remain protected during retries and across restarts. If a window fails to return, **Try again** appears. The saved arrangement is protected from being overwritten by misplaced windows. To deliberately replace it, expand Troubleshooting and choose **Use current window positions instead**.
+Wake and reconnect captures are retried with fresh Accessibility references when the system exposes invalid or incomplete window data. Saved layouts remain protected during retries and across restarts. If a restore fails, the popover opens automatically with **Restore failed** and **Layout saving is paused**. **Try again** retries the saved arrangement. Saving stays paused across restarts until a retry succeeds or you explicitly accept the current positions. The saved arrangement is protected from being overwritten by misplaced windows. To deliberately replace it, expand Troubleshooting and choose **Use current window positions instead**.
 
 ## Troubleshooting
 

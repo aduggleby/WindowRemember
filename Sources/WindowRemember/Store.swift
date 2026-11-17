@@ -2,6 +2,10 @@ import AppKit
 import SwiftUI
 import ServiceManagement
 
+extension Notification.Name {
+    static let windowRememberRestoreFailed = Notification.Name("WindowRemember.restoreFailed")
+}
+
 @MainActor final class Store: ObservableObject {
     @Published var archive = Archive()
     @Published var trusted = WindowAccess.trusted
@@ -22,9 +26,10 @@ import ServiceManagement
     private var restoreGeneration = 0
     private var topology = DisplayInfo.current.map { $0.id + NSStringFromRect($0.frame) }.joined()
     private let file: URL
-    init(preview: Bool = false) {
+    var savingPausedByFailure: Bool { learningProtected && restoreProblem != nil && !isRestoring }
+    init(preview: Bool = false, storageURL: URL? = nil) {
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("WindowRemember")
-        file = directory.appendingPathComponent("layouts.json")
+        file = storageURL ?? directory.appendingPathComponent("layouts.json")
         if preview {
             trusted = true
             displays = [DisplayInfo(id: "sample-laptop", name: "MacBook", frame: CGRect(x: 0, y: 0, width: 1440, height: 900), visible: CGRect(x: 0, y: 25, width: 1440, height: 875)), DisplayInfo(id: "sample-external", name: "External display", frame: CGRect(x: 1440, y: 0, width: 2560, height: 1440), visible: CGRect(x: 1440, y: 25, width: 2560, height: 1415))]
@@ -108,7 +113,10 @@ import ServiceManagement
         restore(layout, reason: "Manual restore")
     }
     func restore(_ layout: Layout, reason: String) {
-        guard WindowAccess.trusted else { WindowAccess.request(); return }
+        guard WindowAccess.trusted else {
+            failRestore("Accessibility access is unavailable. Enable access, then try again.", configuration: signature)
+            return
+        }
         guard !isRestoring else { status = "A restore is already in progress."; return }
         let configuration = signature
         let generation = restoreGeneration
@@ -131,7 +139,7 @@ import ServiceManagement
             }
             guard signature == configuration, generation == restoreGeneration else { return }
             guard ready else {
-                restoreProblem = "Window access has not settled after reconnecting. Your saved layout is kept; try again."
+                failRestore("Window access has not settled after reconnecting. Try again when your displays are ready.", configuration: configuration)
                 Diagnostics.log("restore.capture-unavailable", ["learningProtected": true, "configuration": configuration])
                 return
             }
@@ -157,7 +165,9 @@ import ServiceManagement
             }
             guard signature == configuration, generation == restoreGeneration else { return }
             protect(failed > 0, configuration: configuration)
-            restoreProblem = problems.isEmpty ? nil : problems.prefix(3).joined(separator: "\n")
+            if failed > 0 {
+                failRestore("Couldn’t restore \(failed) window\(failed == 1 ? "" : "s").\n" + problems.prefix(3).joined(separator: "\n"), configuration: configuration)
+            } else { restoreProblem = nil }
             currentWindows = WindowAccess.windows(ignoring: []).map(\.record)
             status = "Restored \(moved) windows" + (skipped > 0 ? " · \(skipped) unavailable" : " · All in place")
             if learningProtected { status += " · Saved layout protected; retry from the menu bar." }
@@ -178,9 +188,22 @@ import ServiceManagement
             restoreProblem = "Window access is not ready. Your saved layout is kept."
             return
         }
+        let windows = capture.windows.map(\.record)
+        let previous = archive.layouts[signature]
+        archive.layouts[signature] = Layout(id: previous?.id ?? UUID(), name: previous?.name ?? displays.map(\.name).joined(separator: " + "), configuration: signature, windows: windows)
+        currentWindows = windows
         protect(false, configuration: signature)
         restoreProblem = nil
-        learn(force: true)
+        persist()
+    }
+    func failRestore(_ message: String, configuration: String) {
+        protect(true, configuration: configuration)
+        guard configuration == signature else { return }
+        restoreProblem = message
+        isRestoring = false
+        status = "Restore failed — layout saving is paused."
+        Diagnostics.log("restore.error-shown", ["configuration": configuration, "savingPaused": true])
+        NotificationCenter.default.post(name: .windowRememberRestoreFailed, object: self)
     }
     private func protect(_ value: Bool, configuration: String) {
         var protected = archive.protectedConfigurations ?? []

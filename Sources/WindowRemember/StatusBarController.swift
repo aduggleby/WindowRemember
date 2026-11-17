@@ -35,6 +35,9 @@ import SwiftUI
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: MenuPanel().environmentObject(store))
         repair(reason: "launch")
+        observers.append(NotificationCenter.default.addObserver(forName: .windowRememberRestoreFailed, object: store, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.showPopover() }
+        })
         for name in [NSApplication.didChangeScreenParametersNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 Task { @MainActor in self?.repair(reason: "display-change") }
@@ -54,7 +57,7 @@ import SwiftUI
         if let button = item.button {
             button.image = TrayIcon.image
             button.imagePosition = .imageOnly
-            button.toolTip = "WindowRemember"
+            button.toolTip = store.savingPausedByFailure ? "WindowRemember — restore failed; layout saving paused" : "WindowRemember"
             button.setAccessibilityLabel("WindowRemember")
             button.target = self
             button.action = #selector(togglePopover)

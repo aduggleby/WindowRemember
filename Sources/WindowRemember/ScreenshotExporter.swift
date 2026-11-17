@@ -5,9 +5,13 @@ import SwiftUI
 @MainActor enum ScreenshotExporter {
     static func export(to directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        for name in ["remembering", "troubleshooting", "access-needed"] {
+        for name in ["remembering", "troubleshooting", "access-needed", "restore-failed"] {
             let store = Store(preview: true)
             store.trusted = name != "access-needed"
+            if name == "restore-failed" {
+                store.learningProtected = true
+                store.restoreProblem = "Couldn’t restore one window. The app hasn’t made its window available yet."
+            }
             let content = MenuPanel(expandedDiagnostics: name == "troubleshooting")
                 .environmentObject(store)
                 .preferredColorScheme(.light)

@@ -26,7 +26,8 @@ struct MenuPanel: View {
     private var heading: String {
         if !store.trusted { return "Allow window access" }
         if store.isRestoring { return "Putting your windows back…" }
-        if store.learningProtected { return "Some windows couldn’t return" }
+        if store.savingPausedByFailure { return "Restore failed" }
+        if store.learningProtected { return "Saved layout protected" }
         if store.paused { return "Remembering paused" }
         return "Remembering your windows"
     }
@@ -59,11 +60,11 @@ struct MenuPanel: View {
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true).padding(.bottom, 10)
                 if store.learningProtected && !store.isRestoring {
                     Button("Try again") { store.restoreCurrent() }.buttonStyle(.borderedProminent).controlSize(.large)
-                    Text("Your saved positions are protected.").font(.caption).foregroundStyle(.secondary).padding(.top, 7)
+                    Text(store.savingPausedByFailure ? "Layout saving is paused. Your saved positions will not be overwritten." : "Your saved positions are protected.").font(.caption).foregroundStyle(store.savingPausedByFailure ? Color.orange : Color.secondary).fixedSize(horizontal: false, vertical: true).padding(.top, 7)
                 }
             }
             Divider().padding(.vertical, 10)
-            if store.trusted {
+            if store.trusted && !store.learningProtected {
                 menuButton(store.paused ? "Resume remembering" : "Pause remembering") { store.paused.toggle() }.disabled(store.isRestoring)
             }
             DisclosureGroup("Troubleshooting", isExpanded: $troubleshooting) {
