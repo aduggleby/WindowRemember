@@ -23,6 +23,7 @@ struct Layout: Codable, Identifiable {
 // Unknown legacy keys (scenes, pins, history, exclusions) are deliberately ignored.
 struct Archive: Codable {
     var layouts: [String: Layout] = [:]
+    var protectedConfigurations: Set<String>? = nil
 }
 struct DisplayInfo: Identifiable {
     var id: String

@@ -5,6 +5,11 @@ struct LiveWindow {
     var element: AXUIElement
     var record: WindowRecord
 }
+struct WindowCapture {
+    var windows: [LiveWindow] = []
+    var unreliableBundles = Set<String>()
+    var invalidRoles = false
+}
 enum WindowAccess {
     static var trusted: Bool { AXIsProcessTrusted() }
     static func request() {
@@ -21,9 +26,12 @@ enum WindowAccess {
         return value
     }
     static func windows(ignoring: [String], diagnostic: Bool = false) -> [LiveWindow] {
-        guard trusted else { Diagnostics.log("capture.permission-denied"); return [] }
+        capture(ignoring: ignoring, diagnostic: diagnostic).windows
+    }
+    static func capture(ignoring: [String], diagnostic: Bool = false) -> WindowCapture {
+        guard trusted else { Diagnostics.log("capture.permission-denied"); return WindowCapture(invalidRoles: true) }
         let displays = DisplayInfo.current
-        var result: [LiveWindow] = []
+        var report = WindowCapture()
         let onscreen = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
         let visibleOwners = Set(onscreen.filter { ($0[kCGWindowLayer as String] as? Int) == 0 }.compactMap { $0[kCGWindowOwnerPID as String] as? Int32 })
         if diagnostic { Diagnostics.log("capture.onscreen", ["windows": onscreen.filter { ($0[kCGWindowLayer as String] as? Int) == 0 }.map { ["owner": $0[kCGWindowOwnerName as String] ?? "", "pid": $0[kCGWindowOwnerPID as String] ?? 0, "bounds": $0[kCGWindowBounds as String] ?? [:]] }]) }
@@ -34,6 +42,7 @@ enum WindowAccess {
             let element = AXUIElementCreateApplication(app.processIdentifier)
             AXUIElementSetMessagingTimeout(element, 0.25)
             guard let windows = attribute(element, kAXWindowsAttribute) as? [AXUIElement] else {
+                report.unreliableBundles.insert(bundle)
                 if diagnostic { Diagnostics.log("capture.app-unavailable", ["bundle": bundle]) }; continue
             }
             var candidates = windows
@@ -48,6 +57,10 @@ enum WindowAccess {
                 let title = attribute(window, kAXTitleAttribute) as? String ?? ""
                 let role = attribute(window, kAXRoleAttribute) as? String ?? ""
                 let subrole = attribute(window, kAXSubroleAttribute) as? String ?? ""
+                if role == kAXApplicationRole || role.isEmpty {
+                    report.invalidRoles = true
+                    report.unreliableBundles.insert(bundle)
+                }
                 let minimized = (attribute(window, kAXMinimizedAttribute) as? Bool) == true
                 let fullscreen = (attribute(window, "AXFullScreen") as? Bool) == true
                 var positionSettable = DarwinBoolean(false)
@@ -69,11 +82,11 @@ enum WindowAccess {
                 guard size.width > 80, size.height > 60 else { if diagnostic { Diagnostics.log("capture.excluded", ["bundle": bundle, "title": title, "reason": "too-small"]) }; continue }
                 let rect = CGRect(origin: point, size: size)
                 guard let display = displays.max(by: { a,b in area(rect.intersection(a.frame)) < area(rect.intersection(b.frame)) }), area(rect.intersection(display.frame)) > 0 else { if diagnostic { Diagnostics.log("capture.excluded", ["bundle": bundle, "title": title, "reason": "off-display"]) }; continue }
-                result.append(LiveWindow(element: window, record: WindowRecord(bundleID: bundle, appName: app.localizedName ?? bundle, title: attribute(window, kAXTitleAttribute) as? String ?? "", ordinal: index, displayID: display.id, x: point.x - display.frame.minX, y: point.y - display.frame.minY, width: size.width, height: size.height, fullscreen: fullscreen)))
+                report.windows.append(LiveWindow(element: window, record: WindowRecord(bundleID: bundle, appName: app.localizedName ?? bundle, title: attribute(window, kAXTitleAttribute) as? String ?? "", ordinal: index, displayID: display.id, x: point.x - display.frame.minX, y: point.y - display.frame.minY, width: size.width, height: size.height, fullscreen: fullscreen)))
             }
         }
-        if diagnostic { Diagnostics.log("capture.complete", ["windows": result.map { Diagnostics.record($0.record) }, "displays": Diagnostics.displays()]) }
-        return result
+        if diagnostic { Diagnostics.log("capture.complete", ["windows": report.windows.map { Diagnostics.record($0.record) }, "displays": Diagnostics.displays()]) }
+        return report
     }
     static func area(_ r: CGRect) -> CGFloat { r.isNull ? 0 : r.width * r.height }
     static func restoreWindow(_ window: AXUIElement, to record: WindowRecord) async -> Bool {

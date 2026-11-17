@@ -19,6 +19,7 @@ import ServiceManagement
     @Published var learningProtected = false
     @Published var isRestoring = false
     private var restoreTask: Task<Void, Never>?
+    private var restoreGeneration = 0
     private var topology = DisplayInfo.current.map { $0.id + NSStringFromRect($0.frame) }.joined()
     private let file: URL
     init(preview: Bool = false) {
@@ -39,7 +40,9 @@ import ServiceManagement
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in Task { @MainActor in self?.tick() } }
         Diagnostics.log("app.started", ["trusted": trusted,  "displays": Diagnostics.displays()])
         configureLogin()
-        tick()
+        learningProtected = archive.protectedConfigurations?.contains(signature) == true || storageProblem != nil
+        if archive.layouts[signature] != nil { scheduleRestore(reason: "App launched") }
+        else { tick() }
     }
     func persist() {
         do {
@@ -61,7 +64,13 @@ import ServiceManagement
     }
     func learn(force: Bool = false) {
         guard trusted, storageProblem == nil, !isRestoring, (!learningProtected || force), (Date() > suspendedUntil || force), DisplayInfo.signature == signature else { return }
-        let windows = WindowAccess.windows(ignoring: []).map(\.record)
+        let capture = WindowAccess.capture(ignoring: [])
+        let windows = capture.windows.map(\.record)
+        let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+        guard WindowPolicy.captureIsReady(expected: force ? [] : (archive.layouts[signature]?.windows ?? []), captured: windows, runningBundles: running, unreliableBundles: capture.unreliableBundles, invalidRoles: capture.invalidRoles) else {
+            Diagnostics.log("learning.unreliable-capture", ["invalidRoles": capture.invalidRoles, "count": windows.count])
+            return
+        }
         currentWindows = windows
         guard !windows.isEmpty else { return }
         let previous = archive.layouts[signature]
@@ -80,7 +89,10 @@ import ServiceManagement
         scheduleRestore(reason: "Display setup changed")
     }
     func scheduleRestore(reason: String) {
+        restoreGeneration += 1
         settling?.cancel()
+        if archive.layouts[signature] != nil { protect(true, configuration: signature) }
+        else { learningProtected = false }
         suspendedUntil = Date().addingTimeInterval(12)
         Diagnostics.log("restore.scheduled", ["reason": reason, "configuration": signature])
         settling = Task { @MainActor in
@@ -99,20 +111,42 @@ import ServiceManagement
         guard WindowAccess.trusted else { WindowAccess.request(); return }
         guard !isRestoring else { status = "A restore is already in progress."; return }
         let configuration = signature
+        let generation = restoreGeneration
+        protect(true, configuration: configuration)
         isRestoring = true
         restoreTask = Task { @MainActor in
             defer { isRestoring = false; suspendedUntil = Date().addingTimeInterval(5) }
-            let live = WindowAccess.windows(ignoring: [], diagnostic: true)
+            var live: [LiveWindow] = []
+            var ready = false
+            // Wake/dock reconnects can briefly expose AXApplication objects as windows.
+            // Recreate all AX references each time; never move those invalid objects.
+            for attempt in 0..<4 {
+                guard signature == configuration, generation == restoreGeneration else { return }
+                let capture = WindowAccess.capture(ignoring: [], diagnostic: true)
+                let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+                ready = WindowAccess.trusted && WindowPolicy.captureIsReady(expected: layout.windows, captured: capture.windows.map(\.record), runningBundles: running, unreliableBundles: capture.unreliableBundles, invalidRoles: capture.invalidRoles)
+                Diagnostics.log("restore.capture-readiness", ["attempt": attempt + 1, "ready": ready, "invalidRoles": capture.invalidRoles, "count": capture.windows.count])
+                if ready { live = capture.windows; break }
+                if attempt < 3 { try? await Task.sleep(for: .seconds(Double(2 << attempt))) }
+            }
+            guard signature == configuration, generation == restoreGeneration else { return }
+            guard ready else {
+                restoreProblem = "Window access has not settled after reconnecting. Your saved layout is kept; try again."
+                Diagnostics.log("restore.capture-unavailable", ["learningProtected": true, "configuration": configuration])
+                return
+            }
             Diagnostics.log("restore.begin", ["reason": reason, "layout": layout.name, "windows": layout.windows.map(Diagnostics.record)])
             var used = Set<Int>(); var moved = 0; var skipped = 0; var failed = 0
             var problems: [String] = []
             for saved in layout.windows {
-                guard signature == configuration else { Diagnostics.log("restore.interrupted", ["reason": "display changed"]); return }
+                guard signature == configuration, generation == restoreGeneration else { Diagnostics.log("restore.interrupted", ["reason": "display changed"]); return }
                 let candidates = live.indices.filter { !used.contains($0) && live[$0].record.bundleID == saved.bundleID }
                 let candidateRecords = candidates.map { live[$0].record }
                 guard let matchedOffset = WindowPolicy.match(saved, in: candidateRecords) else {
                     skipped += 1
-                    if !candidates.isEmpty { failed += 1; problems.append(saved.appName + " · " + saved.title) }
+                    if WindowPolicy.unmatchedIsFailure(saved, runningBundles: Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))) {
+                        failed += 1; problems.append(saved.appName + " · " + saved.title)
+                    }
                     Diagnostics.log("restore.unmatched", ["window": Diagnostics.record(saved), "candidates": candidates.map { Diagnostics.record(live[$0].record) }]); continue
                 }
                 let index = candidates[matchedOffset]
@@ -121,7 +155,8 @@ import ServiceManagement
                 if await WindowAccess.restoreWindow(live[index].element, to: saved) { moved += 1 }
                 else { skipped += 1; failed += 1; problems.append(saved.appName + " · " + saved.title) }
             }
-            learningProtected = failed > 0
+            guard signature == configuration, generation == restoreGeneration else { return }
+            protect(failed > 0, configuration: configuration)
             restoreProblem = problems.isEmpty ? nil : problems.prefix(3).joined(separator: "\n")
             currentWindows = WindowAccess.windows(ignoring: []).map(\.record)
             status = "Restored \(moved) windows" + (skipped > 0 ? " · \(skipped) unavailable" : " · All in place")
@@ -138,9 +173,22 @@ import ServiceManagement
     }
     func adoptCurrentPositions() {
         guard !isRestoring else { return }
-        learningProtected = false
+        let capture = WindowAccess.capture(ignoring: [])
+        guard !capture.invalidRoles, !capture.windows.isEmpty else {
+            restoreProblem = "Window access is not ready. Your saved layout is kept."
+            return
+        }
+        protect(false, configuration: signature)
         restoreProblem = nil
         learn(force: true)
+    }
+    private func protect(_ value: Bool, configuration: String) {
+        var protected = archive.protectedConfigurations ?? []
+        let before = protected
+        if value { protected.insert(configuration) } else { protected.remove(configuration) }
+        archive.protectedConfigurations = protected
+        if signature == configuration { learningProtected = value }
+        if protected != before { persist() }
     }
     private func configureLogin() {
         // Try once after installation. Respect a later user choice to disable login startup.
