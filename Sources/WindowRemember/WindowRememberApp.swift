@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @main struct WindowRememberApp: App {
-    @StateObject private var store = Store()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     init() {
         if let flag = CommandLine.arguments.firstIndex(of: "--render-screenshots"), CommandLine.arguments.indices.contains(flag + 1) {
             do { try ScreenshotExporter.export(to: URL(fileURLWithPath: CommandLine.arguments[flag + 1])) }
@@ -11,11 +11,7 @@ import AppKit
         }
     }
     var body: some Scene {
-        MenuBarExtra {
-            MenuPanel().environmentObject(store)
-        } label: {
-            Image(nsImage: TrayIcon.image).accessibilityLabel("WindowRemember")
-        }.menuBarExtraStyle(.window)
+        Settings { EmptyView() }
     }
 }
 

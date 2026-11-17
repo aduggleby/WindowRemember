@@ -22,6 +22,14 @@ final class WindowPolicyTests: XCTestCase {
     func testRemoteSessionMatchesTitleAfterWindowOrderChanges() {
         XCTAssertEqual(WindowPolicy.match(window("remote-workstation.example", ordinal: 1), in: [window("remote-workstation.example"), window("Windows App", ordinal: 1)]), 0)
     }
+    func testUnchangedLayoutIgnoresEnumerationOrderButDetectsMovement() {
+        let first = window("First")
+        let second = window("Second", ordinal: 1)
+        XCTAssertTrue(WindowPolicy.layoutsMatch([first, second], [second, first]))
+        var moved = first
+        moved.x += 100
+        XCTAssertFalse(WindowPolicy.layoutsMatch([first, second], [moved, second]))
+    }
     func testOldLayoutsDecodeWithoutFullScreenField() throws {
         let data = try JSONEncoder().encode(window("Legacy"))
         var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])

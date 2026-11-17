@@ -26,9 +26,9 @@ The app’s actual interface, rendered with sample monitor data. No desktop cont
 
 **[Download the latest release](https://github.com/aduggleby/WindowRemember/releases/latest)**
 
-Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.1 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
+Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.2 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
 
-1. Download and unzip `WindowRemember-1.1.1-universal.zip`.
+1. Download and unzip `WindowRemember-1.1.2-universal.zip`.
 2. Move **WindowRemember.app** to **Applications** before opening it.
 3. Open it and click the **anchor icon** in the menu bar.
 4. Click **Open Accessibility Settings**, then enable WindowRemember under **Privacy & Security → Accessibility**. This is the macOS permission needed to read and move other apps’ windows.
@@ -45,6 +45,8 @@ The popover normally shows only its status, connected monitors, **Pause remember
 If a window fails to return, **Try again** appears. The saved arrangement is protected from being overwritten by misplaced windows. To deliberately replace it, expand Troubleshooting and choose **Use current window positions instead**.
 
 ## Troubleshooting
+
+- **Menu bar icon disappears:** the app now retains its native status item independently of the popover and checks it on wake, display changes, and once a minute. Reopening the app from Applications opens the popover. macOS can still hide menu items when the menu bar is full; close another app’s menu items or use a larger display. Diagnostics include status-item visibility, frame, process ID, heartbeat, and clean termination events to distinguish a hidden item from an app exit.
 
 - **Access needed:** enable Accessibility for the copy in Applications. After replacing a development build, macOS may require toggling access off and on. Quit older copies so only one instance is running.
 - **A window did not return:** open its app, reconnect the expected monitor, and click **Try again**. Closed apps are not launched automatically.
@@ -63,7 +65,7 @@ There is **no telemetry, account, server, or in-app upload**. Layouts and diagno
 ~/Library/Application Support/WindowRemember/Diagnostics/debug.previous.jsonl
 ```
 
-Layouts contain app identifiers, window titles, monitor identities, and frames. Diagnostic logs also record capture exclusions, matching decisions, macOS Accessibility errors, full-screen transitions, and restore outcomes. Logs rotate at approximately 5 MB, keeping one previous file (about 10 MB total). They can contain private document titles and remote host names.
+Layouts contain app identifiers, window titles, monitor identities, and frames. Diagnostic logs record changed layouts, matching decisions, macOS Accessibility errors, full-screen transitions, status-item health, and restore outcomes. Full per-window capture details are collected on manual diagnostic snapshots and restores. Normal polling does not emit full dumps, and unchanged layouts are not rewritten. Log records are batched for up to five seconds to reduce disk writes; manual snapshots and orderly shutdown flush immediately. Logs rotate at approximately 5 MB, keeping one previous file (about 10 MB total). They can contain private document titles and remote host names.
 
 Quit the app before deleting its local data to reset it. Local data, diagnostics, signing credentials, and release build products are excluded from Git.
 

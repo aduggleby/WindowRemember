@@ -1,6 +1,6 @@
 import AppKit
 
-struct WindowRecord: Codable, Identifiable {
+struct WindowRecord: Codable, Identifiable, Equatable {
     var id: String { "\(bundleID):\(title):\(ordinal)" }
     var bundleID: String
     var appName: String

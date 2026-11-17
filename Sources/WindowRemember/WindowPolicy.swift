@@ -1,6 +1,9 @@
 import Foundation
 
 enum WindowPolicy {
+    static func layoutsMatch(_ lhs: [WindowRecord], _ rhs: [WindowRecord]) -> Bool {
+        lhs.sorted { $0.id < $1.id } == rhs.sorted { $0.id < $1.id }
+    }
     static func captures(role: String, subrole: String, minimized: Bool, fullscreen: Bool, positionSettable: Bool) -> Bool {
         guard role == "AXWindow", !minimized else { return false }
         if subrole == "AXStandardWindow" { return true }

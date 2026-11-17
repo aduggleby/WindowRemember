@@ -61,11 +61,12 @@ import ServiceManagement
     }
     func learn(force: Bool = false) {
         guard trusted, storageProblem == nil, !isRestoring, (!learningProtected || force), (Date() > suspendedUntil || force), DisplayInfo.signature == signature else { return }
-        let windows = WindowAccess.windows(ignoring: [], diagnostic: true).map(\.record)
+        let windows = WindowAccess.windows(ignoring: []).map(\.record)
         currentWindows = windows
-        Diagnostics.log("learning.capture", ["configuration": signature, "count": windows.count])
         guard !windows.isEmpty else { return }
         let previous = archive.layouts[signature]
+        if let previous, WindowPolicy.layoutsMatch(previous.windows, windows) { return }
+        Diagnostics.log("learning.changed", ["configuration": signature, "windows": windows.map(Diagnostics.record)])
         archive.layouts[signature] = Layout(id: previous?.id ?? UUID(), name: previous?.name ?? displays.map(\.name).joined(separator: " + "), configuration: signature, windows: windows)
         persist()
     }
@@ -132,6 +133,7 @@ import ServiceManagement
     func captureDiagnostics() {
         Diagnostics.log("diagnostics.manual", ["trusted": WindowAccess.trusted, "paused": paused,  "restoring": isRestoring, "learningProtected": learningProtected, "configuration": signature, "displays": Diagnostics.displays()])
         _ = WindowAccess.windows(ignoring: [], diagnostic: true)
+        Diagnostics.flush()
         status = "Diagnostic snapshot saved locally."
     }
     func adoptCurrentPositions() {
