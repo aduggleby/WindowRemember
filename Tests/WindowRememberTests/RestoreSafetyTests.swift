@@ -29,6 +29,16 @@ final class RestoreSafetyTests: XCTestCase {
     private func record(_ bundle: String = "example.editor") -> WindowRecord {
         WindowRecord(bundleID: bundle, appName: "Editor", title: "Document", ordinal: 0, displayID: "external", x: 100, y: 100, width: 900, height: 600)
     }
+    func testPartialRestoreProceedsWhenAnotherRunningAppHasNoWindows() {
+        let available = [record()]
+        XCTAssertTrue(WindowPolicy.restoreCaptureIsReady(captured: available, invalidRoles: false))
+        XCTAssertFalse(WindowPolicy.captureIsReady(expected: available + [record("example.preview")], captured: available, runningBundles: ["example.editor", "example.preview"], unreliableBundles: [], invalidRoles: false))
+        XCTAssertTrue(WindowPolicy.unmatchedIsFailure(record("example.preview"), runningBundles: ["example.preview"]))
+    }
+    func testRestoreStillRetriesEmptyOrInvalidWakeCaptures() {
+        XCTAssertFalse(WindowPolicy.restoreCaptureIsReady(captured: [], invalidRoles: false))
+        XCTAssertFalse(WindowPolicy.restoreCaptureIsReady(captured: [record()], invalidRoles: true))
+    }
     func testEmptyPostWakeCaptureCannotRestoreOrReleaseProtectionForRunningApps() {
         XCTAssertFalse(WindowPolicy.captureIsReady(expected: [record()], captured: [], runningBundles: ["example.editor"], unreliableBundles: [], invalidRoles: false))
     }

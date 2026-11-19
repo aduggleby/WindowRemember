@@ -1,6 +1,11 @@
 import Foundation
 
 enum WindowPolicy {
+    // Restoration can proceed independently for available windows. Learning stays stricter
+    // so a partial capture cannot replace the saved layout.
+    static func restoreCaptureIsReady(captured: [WindowRecord], invalidRoles: Bool) -> Bool {
+        !invalidRoles && !captured.isEmpty
+    }
     static func captureIsReady(expected: [WindowRecord], captured: [WindowRecord], runningBundles: Set<String>, unreliableBundles: Set<String>, invalidRoles: Bool) -> Bool {
         guard !invalidRoles else { return false }
         let expectedRunning = Set(expected.map(\.bundleID)).intersection(runningBundles)

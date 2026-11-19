@@ -132,8 +132,9 @@ extension Notification.Name {
                 guard signature == configuration, generation == restoreGeneration else { return }
                 let capture = WindowAccess.capture(ignoring: [], diagnostic: true)
                 let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
-                ready = WindowAccess.trusted && WindowPolicy.captureIsReady(expected: layout.windows, captured: capture.windows.map(\.record), runningBundles: running, unreliableBundles: capture.unreliableBundles, invalidRoles: capture.invalidRoles)
-                Diagnostics.log("restore.capture-readiness", ["attempt": attempt + 1, "ready": ready, "invalidRoles": capture.invalidRoles, "count": capture.windows.count])
+                ready = WindowAccess.trusted && WindowPolicy.restoreCaptureIsReady(captured: capture.windows.map(\.record), invalidRoles: capture.invalidRoles)
+                let missingBundles = Set(layout.windows.map(\.bundleID)).intersection(running).subtracting(capture.windows.map { $0.record.bundleID })
+                Diagnostics.log("restore.capture-readiness", ["attempt": attempt + 1, "ready": ready, "invalidRoles": capture.invalidRoles, "count": capture.windows.count, "missingRunningBundles": Array(missingBundles).sorted(), "unreliableBundles": Array(capture.unreliableBundles).sorted()])
                 if ready { live = capture.windows; break }
                 if attempt < 3 { try? await Task.sleep(for: .seconds(Double(2 << attempt))) }
             }
