@@ -126,16 +126,17 @@ extension Notification.Name {
             defer { isRestoring = false; suspendedUntil = Date().addingTimeInterval(5) }
             var live: [LiveWindow] = []
             var ready = false
+            var unreliableBundles = Set<String>()
             // Wake/dock reconnects can briefly expose AXApplication objects as windows.
             // Recreate all AX references each time; never move those invalid objects.
             for attempt in 0..<4 {
                 guard signature == configuration, generation == restoreGeneration else { return }
                 let capture = WindowAccess.capture(ignoring: [], diagnostic: true)
                 let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
-                ready = WindowAccess.trusted && WindowPolicy.restoreCaptureIsReady(captured: capture.windows.map(\.record), invalidRoles: capture.invalidRoles)
+                ready = WindowAccess.trusted && WindowPolicy.restoreCaptureIsReady(captured: capture.windows.map(\.record), invalidRoles: capture.invalidRoles, unreliableBundles: capture.unreliableBundles)
                 let missingBundles = Set(layout.windows.map(\.bundleID)).intersection(running).subtracting(capture.windows.map { $0.record.bundleID })
                 Diagnostics.log("restore.capture-readiness", ["attempt": attempt + 1, "ready": ready, "invalidRoles": capture.invalidRoles, "count": capture.windows.count, "missingRunningBundles": Array(missingBundles).sorted(), "unreliableBundles": Array(capture.unreliableBundles).sorted()])
-                if ready { live = capture.windows; break }
+                if ready { live = capture.windows; unreliableBundles = capture.unreliableBundles; break }
                 if attempt < 3 { try? await Task.sleep(for: .seconds(Double(2 << attempt))) }
             }
             guard signature == configuration, generation == restoreGeneration else { return }
@@ -153,7 +154,7 @@ extension Notification.Name {
                 let candidateRecords = candidates.map { live[$0].record }
                 guard let matchedOffset = WindowPolicy.match(saved, in: candidateRecords) else {
                     skipped += 1
-                    if WindowPolicy.unmatchedIsFailure(saved, runningBundles: Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))) {
+                    if WindowPolicy.unmatchedIsFailure(saved, unreliableBundles: unreliableBundles) {
                         failed += 1; problems.append(saved.appName + " · " + saved.title)
                     }
                     Diagnostics.log("restore.unmatched", ["window": Diagnostics.record(saved), "candidates": candidates.map { Diagnostics.record(live[$0].record) }]); continue

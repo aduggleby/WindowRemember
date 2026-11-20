@@ -32,15 +32,16 @@ final class RestoreSafetyTests: XCTestCase {
     func testPartialRestoreProceedsWhenAnotherRunningAppHasNoWindows() {
         let available = [record()]
         XCTAssertTrue(WindowPolicy.restoreCaptureIsReady(captured: available, invalidRoles: false))
-        XCTAssertFalse(WindowPolicy.captureIsReady(expected: available + [record("example.preview")], captured: available, runningBundles: ["example.editor", "example.preview"], unreliableBundles: [], invalidRoles: false))
-        XCTAssertTrue(WindowPolicy.unmatchedIsFailure(record("example.preview"), runningBundles: ["example.preview"]))
+        XCTAssertTrue(WindowPolicy.captureIsReady(expected: available + [record("example.preview")], captured: available, runningBundles: ["example.editor", "example.preview"], unreliableBundles: [], invalidRoles: false))
+        XCTAssertFalse(WindowPolicy.unmatchedIsFailure(record("example.preview"), unreliableBundles: []))
     }
-    func testRestoreStillRetriesEmptyOrInvalidWakeCaptures() {
-        XCTAssertFalse(WindowPolicy.restoreCaptureIsReady(captured: [], invalidRoles: false))
+    func testRestoreRetriesFailedQueriesAndInvalidWakeCaptures() {
+        XCTAssertTrue(WindowPolicy.restoreCaptureIsReady(captured: [], invalidRoles: false))
+        XCTAssertFalse(WindowPolicy.restoreCaptureIsReady(captured: [], invalidRoles: false, unreliableBundles: ["example.editor"]))
         XCTAssertFalse(WindowPolicy.restoreCaptureIsReady(captured: [record()], invalidRoles: true))
     }
-    func testEmptyPostWakeCaptureCannotRestoreOrReleaseProtectionForRunningApps() {
-        XCTAssertFalse(WindowPolicy.captureIsReady(expected: [record()], captured: [], runningBundles: ["example.editor"], unreliableBundles: [], invalidRoles: false))
+    func testSuccessfulEmptyQueryMeansSavedWindowsAreClosed() {
+        XCTAssertTrue(WindowPolicy.captureIsReady(expected: [record()], captured: [], runningBundles: ["example.editor"], unreliableBundles: [], invalidRoles: false))
     }
     func testApplicationObjectsReturnedAsWindowsRequireRetryEvenIfSomeWindowsAreValid() {
         XCTAssertFalse(WindowPolicy.captureIsReady(expected: [record()], captured: [record()], runningBundles: ["example.editor"], unreliableBundles: [], invalidRoles: true))
@@ -51,9 +52,9 @@ final class RestoreSafetyTests: XCTestCase {
     func testFreshCaptureBecomesReadyAfterTransientFailure() {
         XCTAssertTrue(WindowPolicy.captureIsReady(expected: [record()], captured: [record()], runningBundles: ["example.editor"], unreliableBundles: [], invalidRoles: false))
     }
-    func testUnmatchedRunningAppIsFailureButClosedAppIsNot() {
-        XCTAssertTrue(WindowPolicy.unmatchedIsFailure(record(), runningBundles: ["example.editor"]))
-        XCTAssertFalse(WindowPolicy.unmatchedIsFailure(record(), runningBundles: []))
+    func testOnlyFailedQueriesMakeUnmatchedWindowsAnError() {
+        XCTAssertTrue(WindowPolicy.unmatchedIsFailure(record(), unreliableBundles: ["example.editor"]))
+        XCTAssertFalse(WindowPolicy.unmatchedIsFailure(record(), unreliableBundles: []))
     }
     func testProtectionAndTargetFramesSurviveRestartRoundTrip() throws {
         var archive = Archive(layouts: ["setup": Layout(name: "Desk", configuration: "setup", windows: [record()])])
