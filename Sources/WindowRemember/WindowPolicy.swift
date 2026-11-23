@@ -6,6 +6,9 @@ enum WindowPolicy {
     static func restoreCaptureIsReady(captured: [WindowRecord], invalidRoles: Bool, unreliableBundles: Set<String> = []) -> Bool {
         !invalidRoles && (!captured.isEmpty || unreliableBundles.isEmpty)
     }
+    static func restoreNeedsRetry(expected: [WindowRecord], runningBundles: Set<String>, unreliableBundles: Set<String>, attempt: Int) -> Bool {
+        attempt < 3 && !Set(expected.map(\.bundleID)).intersection(runningBundles).isDisjoint(with: unreliableBundles)
+    }
     static func captureIsReady(expected: [WindowRecord], captured: [WindowRecord], runningBundles: Set<String>, unreliableBundles: Set<String>, invalidRoles: Bool) -> Bool {
         guard !invalidRoles else { return false }
         let expectedRunning = Set(expected.map(\.bundleID)).intersection(runningBundles)

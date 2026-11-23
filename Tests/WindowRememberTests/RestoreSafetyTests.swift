@@ -29,6 +29,17 @@ final class RestoreSafetyTests: XCTestCase {
     private func record(_ bundle: String = "example.editor") -> WindowRecord {
         WindowRecord(bundleID: bundle, appName: "Editor", title: "Document", ordinal: 0, displayID: "external", x: 100, y: 100, width: 900, height: 600)
     }
+    func testUnresponsiveSavedAppsRetryEvenWhenOtherWindowsAreReadable() {
+        for attempt in 0..<3 {
+            XCTAssertTrue(WindowPolicy.restoreNeedsRetry(expected: [record()], runningBundles: ["example.editor"], unreliableBundles: ["example.editor"], attempt: attempt))
+        }
+        XCTAssertFalse(WindowPolicy.restoreNeedsRetry(expected: [record()], runningBundles: ["example.editor"], unreliableBundles: ["example.editor"], attempt: 3))
+    }
+    func testRecoveredClosedAndUnrelatedAppsDoNotDelayRestore() {
+        XCTAssertFalse(WindowPolicy.restoreNeedsRetry(expected: [record()], runningBundles: ["example.editor"], unreliableBundles: [], attempt: 0))
+        XCTAssertFalse(WindowPolicy.restoreNeedsRetry(expected: [record()], runningBundles: [], unreliableBundles: ["example.editor"], attempt: 0))
+        XCTAssertFalse(WindowPolicy.restoreNeedsRetry(expected: [record()], runningBundles: ["example.editor", "example.other"], unreliableBundles: ["example.other"], attempt: 0))
+    }
     func testPartialRestoreProceedsWhenAnotherRunningAppHasNoWindows() {
         let available = [record()]
         XCTAssertTrue(WindowPolicy.restoreCaptureIsReady(captured: available, invalidRoles: false))

@@ -136,7 +136,11 @@ extension Notification.Name {
                 ready = WindowAccess.trusted && WindowPolicy.restoreCaptureIsReady(captured: capture.windows.map(\.record), invalidRoles: capture.invalidRoles, unreliableBundles: capture.unreliableBundles)
                 let missingBundles = Set(layout.windows.map(\.bundleID)).intersection(running).subtracting(capture.windows.map { $0.record.bundleID })
                 Diagnostics.log("restore.capture-readiness", ["attempt": attempt + 1, "ready": ready, "invalidRoles": capture.invalidRoles, "count": capture.windows.count, "missingRunningBundles": Array(missingBundles).sorted(), "unreliableBundles": Array(capture.unreliableBundles).sorted()])
-                if ready { live = capture.windows; unreliableBundles = capture.unreliableBundles; break }
+                let needsRetry = WindowPolicy.restoreNeedsRetry(expected: layout.windows, runningBundles: running, unreliableBundles: capture.unreliableBundles, attempt: attempt)
+                if ready && !needsRetry { live = capture.windows; unreliableBundles = capture.unreliableBundles; break }
+                if needsRetry {
+                    Diagnostics.log("restore.retry-unresponsive-apps", ["attempt": attempt + 1, "retryInSeconds": 2 << attempt, "bundles": Array(Set(layout.windows.map(\.bundleID)).intersection(running).intersection(capture.unreliableBundles)).sorted()])
+                }
                 if attempt < 3 { try? await Task.sleep(for: .seconds(Double(2 << attempt))) }
             }
             guard signature == configuration, generation == restoreGeneration else { return }
