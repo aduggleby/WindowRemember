@@ -3,7 +3,7 @@ set -eu
 cd "$(dirname "$0")/.."
 export CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$PWD/.build/module-cache"
-VERSION="1.1.8"
+VERSION="1.1.9"
 BUILD_ARGS=(--disable-sandbox -c release)
 if [[ "${WR_UNIVERSAL:-0}" == "1" ]]; then
     BUILD_ARGS+=(--arch arm64 --arch x86_64)
@@ -32,7 +32,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$VERSION</string>
-<key>CFBundleVersion</key><string>10</string>
+<key>CFBundleVersion</key><string>11</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>

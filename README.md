@@ -27,9 +27,9 @@ The app’s actual interface, rendered with sample monitor data. No desktop cont
 
 **[Download the latest release](https://github.com/aduggleby/WindowRemember/releases/latest)**
 
-Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.8 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
+Requires **macOS 14 Sonoma or later**. The release ZIP contains a universal app for **Apple silicon and Intel**. **Version 1.1.9 is Developer ID signed but not Apple-notarized.** macOS may block its first launch. Only if you trust the download, approve it yourself in **System Settings → Privacy & Security → Open Anyway**. No security settings need to be disabled. See the release notes for build details.
 
-1. Download and unzip `WindowRemember-1.1.8-universal.zip`.
+1. Download and unzip `WindowRemember-1.1.9-universal.zip`.
 2. Move **WindowRemember.app** to **Applications** before opening it.
 3. Open it and click the **anchor icon** in the menu bar.
 4. Click **Open Accessibility Settings**, then enable WindowRemember under **Privacy & Security → Accessibility**. This is the macOS permission needed to read and move other apps’ windows.
@@ -109,3 +109,5 @@ The app can render its real menu interface with synthetic data, without capturin
 swift build -c release
 .build/release/WindowRemember --render-screenshots "$PWD/docs/screenshots"
 ```
+
+Diagnostic logs rotate into uniquely named files in `Diagnostics/Archive` and are never automatically deleted. Updates preserve the entire diagnostics directory, including legacy logs. To install a locally built app with a separate diagnostic backup, run `./scripts/install-app.sh`. Archives contain private window titles and remain on your Mac.
