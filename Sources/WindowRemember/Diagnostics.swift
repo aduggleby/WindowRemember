@@ -30,7 +30,10 @@ enum Diagnostics {
         guard !pending.isEmpty else { return }
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-            if let size = try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > 5_000_000 {
+            // Read fresh filesystem attributes: URL resource values can retain the old
+            // pre-rotation size and otherwise rotate every subsequent write.
+            if let attributes = try? FileManager.default.attributesOfItem(atPath: file.path),
+               let size = attributes[.size] as? NSNumber, size.intValue > 5_000_000 {
                 let previous = directory.appendingPathComponent("debug.previous.jsonl")
                 if FileManager.default.fileExists(atPath: previous.path) { try FileManager.default.removeItem(at: previous) }
                 try FileManager.default.moveItem(at: file, to: previous)
